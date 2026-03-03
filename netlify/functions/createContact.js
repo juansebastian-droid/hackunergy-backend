@@ -26,6 +26,18 @@ exports.handler = async (event) => {
     const newContact = await contactRes.json();
     console.log('contacto creado:', newContact);
 
+    let contactId;
+    if (contactRes.status === 409 && newContact.category === 'CONFLICT') {
+      const match = newContact.message.match(/Existing ID: (\d+)/);
+      if (!match) throw new Error(`Contacto duplicado pero no se pudo extraer ID: ${newContact.message}`);
+      contactId = match[1];
+      console.log('contacto ya existía, usando ID:', contactId);
+    } else if (!contactRes.ok) {
+      throw new Error(`Error HubSpot al crear contacto: ${JSON.stringify(newContact)}`);
+    } else {
+      contactId = newContact.id;
+    }
+
     await fetch('https://api.hubapi.com/crm/v3/associations/contacts/companies/batch/create', {
       method: 'POST',
       headers: {
@@ -34,7 +46,7 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         inputs: [{
-          from: { id: newContact.id },
+          from: { id: contactId },
           to: { id: companyId },
           type: 'contact_to_company'
         }]
@@ -43,7 +55,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ status: 'SUCCESS', contactId: newContact.id })
+      body: JSON.stringify({ status: 'SUCCESS', contactId })
     };
 
   } catch (error) {
