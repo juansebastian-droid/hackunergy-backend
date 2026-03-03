@@ -1,9 +1,11 @@
 exports.handler = async (event) => {
-  const { companyId, contact } = JSON.parse(event.body);
+  console.log('body recibido:', event.body);
+  
+  const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+  const { companyId, contact } = body;
   const TOKEN = process.env.PRIVATE_APP_ACCESS_TOKEN;
 
   try {
-    // Paso 1 - Crear contacto
     const contactRes = await fetch('https://api.hubapi.com/crm/v3/objects/contacts', {
       method: 'POST',
       headers: {
@@ -22,8 +24,8 @@ exports.handler = async (event) => {
     });
 
     const newContact = await contactRes.json();
+    console.log('contacto creado:', newContact);
 
-    // Paso 2 - Asociar a empresa
     await fetch('https://api.hubapi.com/crm/v3/associations/contacts/companies/batch/create', {
       method: 'POST',
       headers: {
@@ -45,6 +47,7 @@ exports.handler = async (event) => {
     };
 
   } catch (error) {
+    console.log('error:', error.message);
     return {
       statusCode: 500,
       body: JSON.stringify({ status: 'ERROR', message: error.message })
